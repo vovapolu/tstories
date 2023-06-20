@@ -1,0 +1,169 @@
+syntax = "proto3";
+
+package openaiproxy.v1;
+
+option go_package = "gitlab.tcsbank.ru/tbp/openai-proxy/pkg/api/openaiproxy;openaiproxy";
+
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+// OpenAIProxy Сервис для проксирования запросов в API OpenAI(без регистрации и смс)
+service OpenAIProxy {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Proxy"
+    description: "Проксируемые методы api.openai.com"
+  };
+  // CompletionV1, не стримовая, параметр stream по умолчанию установлен в false. Основная документация https://platform.openai.com/docs/api-reference/completions/create
+  rpc CompletionV1 (CompletionV1Request) returns (CompletionV1Response) {
+    option (google.api.http) = {
+      post: "/public/v1/completions"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      security: {security_requirement: {key: "Authorization";}};
+    };
+  }
+
+  // CompletionStreamV1, стримовая, параметр stream по умолчанию установлен в true. Основная документация https://platform.openai.com/docs/api-reference/completions/create
+  rpc CompletionStreamV1 (CompletionV1Request) returns (stream CompletionV1Response) {
+    option (google.api.http) = {
+      post: "/public/stream/v1/completions"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      security: {security_requirement: {key: "Authorization";}};
+    };
+  }
+
+  // ChatCompletionV1, не стримовая, параметр stream по умолчанию установлен в false. Основная документация https://platform.openai.com/docs/api-reference/chat/create
+  rpc ChatCompletionV1 (ChatCompletionV1Request) returns (ChatCompletionV1Response) {
+    option (google.api.http) = {
+      post: "/public/v1/chat/completions"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      security: {security_requirement: {key: "Authorization";}};
+    };
+  }
+
+
+  // ChatCompletionV1, стримовая, параметр stream по умолчанию установлен в true. Основная документация https://platform.openai.com/docs/api-reference/chat/create
+  rpc ChatCompletionStreamV1 (ChatCompletionV1Request) returns (stream ChatCompletionStreamV1Response) {
+    option (google.api.http) = {
+      post: "/public/stream/v1/chat/completions"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      security: {security_requirement: {key: "Authorization";}};
+    };
+  }
+}
+
+// Usage статистика запроса
+message Usage {
+  uint32 prompt_tokens = 1;
+  uint32 completion_tokens = 2;
+  uint32 total_tokens = 3;
+}
+
+// CompletionNonStreamV1Request запрос
+message CompletionV1Request {
+  string model = 1;
+  repeated string prompt = 2;
+  optional string suffix = 3;
+  optional uint32 max_tokens = 4;
+  optional float temperature = 5;
+  optional float top_p = 6;
+  optional uint32 n = 7;
+  optional uint32 logprobs = 8;
+  optional bool echo = 9;
+  repeated string stop = 10;
+  optional float presence_penalty = 11;
+  optional float frequency_penalty = 12;
+  optional uint32 best_of = 13;
+  map<string, int32> logit_bias = 14;
+  optional string user = 15;
+}
+
+// CompletionChoice одно из предложений.
+message CompletionChoice {
+  string text = 1;
+  uint32 index = 2;
+  string finish_reason = 3;
+  LogprobResult logprobs = 4;
+}
+
+message TopLogprobs {
+  map<string, float> top_logprobs = 1;
+}
+
+// LogprobResult поле logprob_result в Choice.
+message LogprobResult {
+  repeated string tokens = 1;
+  repeated float token_logprobs = 2;
+  repeated TopLogprobs top_logprobs = 3;
+  repeated uint32 text_offset = 4;
+}
+
+// CompletionResponse ответ.
+message CompletionV1Response {
+  string id = 1;
+  string object = 2;
+  int32 created = 3;
+  string model = 4;
+  repeated CompletionChoice choices = 5;
+  Usage usage = 6;
+}
+
+message ChatCompletionMessage {
+  string role = 1;
+  string content = 2;
+  string name = 3;
+}
+
+message ChatCompletionV1Request {
+  string model = 1;
+  repeated ChatCompletionMessage messages = 2;
+  int32 max_tokens = 3;
+  float temperature = 4;
+  float top_p = 5;
+  int32 n = 6;
+  repeated string stop = 7;
+  float presence_penalty = 8;
+  float frequency_penalty = 9;
+  map<string, int32> logit_bias = 10;
+  string user = 11;
+}
+
+message ChatCompletionChoice {
+  int32 index = 1;
+  ChatCompletionMessage message = 2;
+  string finish_reason = 3;
+}
+
+message ChatCompletionV1Response {
+  string id = 1;
+  string object = 2;
+  int32 created = 3;
+  string model = 4;
+  repeated ChatCompletionChoice choices = 5;
+  Usage usage = 6;
+}
+
+message ChatCompletionStreamChoiceDelta {
+  string content = 1;
+}
+
+message ChatCompletionStreamChoice {
+  int32 index = 1;
+  ChatCompletionStreamChoiceDelta delta = 2;
+  string finish_reason = 3;
+}
+
+message ChatCompletionStreamV1Response {
+  string id = 1;
+  string object = 2;
+  int64 created = 3;
+  string model = 4;
+  repeated ChatCompletionStreamChoice choices = 5;
+}
